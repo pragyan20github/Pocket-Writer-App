@@ -34,10 +34,6 @@
   Upcoming features include drag-and-drop block placement, support for videos, and AI-powered template suggestions.
 
 ---
-## App-Images
-![Feed View](https://github.com/user-attachments/assets/3c28a442-eb64-4534-b5a6-3640fc46f1d5)           ![Template Builder Mode](https://github.com/user-attachments/assets/4cec7397-8b6a-42b9-b6a4-3cd87cbdd2e4)
-
-![Article Read Mode](https://github.com/user-attachments/assets/19d97bc8-f777-4e2d-9897-87081d5484ce)           ![Templates](https://github.com/user-attachments/assets/d43214bb-1ff9-4914-b269-549588168d81)
 
 ## 🛠️ Technologies Used
 
@@ -122,7 +118,7 @@ If you run the backend on a real device, update the `BASE_URL` in `ApiService.kt
 
 
 
-https://github.com/user-attachments/assets/4dbd4ddc-7739-4d0e-aab2-4edaeadeb608
+https://github.com/user-attachments/assets/4dbd4ddc-7739-4d0e-aab2-4edaeadeb608 ![Feed View](https://github.com/user-attachments/assets/3c28a442-eb64-4534-b5a6-3640fc46f1d5) ![Template Builder Mode](https://github.com/user-attachments/assets/4cec7397-8b6a-42b9-b6a4-3cd87cbdd2e4) ![Article Read Mode](https://github.com/user-attachments/assets/19d97bc8-f777-4e2d-9897-87081d5484ce) ![Templates](https://github.com/user-attachments/assets/d43214bb-1ff9-4914-b269-549588168d81)
 
 
 
