@@ -114,7 +114,7 @@ If you run the backend on a real device, update the `BASE_URL` in `ApiService.kt
 
 ---
 
-## 🎬 Demo Video
+## 🎬 Demo Video and Images
 
 
 
