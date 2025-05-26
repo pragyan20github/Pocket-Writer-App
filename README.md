@@ -128,25 +128,6 @@ If you run the backend on a real device, update the `BASE_URL` in `ApiService.kt
 
 ---
 
-## 📁 Project Structure
-
-PocketWriter/
-├── backend/ # Spring Boot backend
-│ ├── src/
-│ ├── pom.xml
-│ └── ...
-├── app/ # Android app
-│ ├── src/
-│ ├── build.gradle.kts
-│ └── ...
-└── README.md
-
-
-
-
-
----
-
 ## 💡 Additional Notes
 
 - All data is stored locally in your PostgreSQL database.  
@@ -156,5 +137,9 @@ PocketWriter/
 - Upcoming features: drag-and-drop block placement, video support, and AI template suggestions.
 
 ---
+
+## Created by
+- Pragyan Srivastava
+- Contact: pragyan@iitg.ac.in
 
 
