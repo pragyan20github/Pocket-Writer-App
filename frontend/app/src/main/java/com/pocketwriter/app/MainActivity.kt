@@ -54,8 +54,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-
-
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.filled.ArrowBack
+import com.pocketwriter.app.ui.theme.Pink80
 
 
 // ARTICLE FEED SCREEN
@@ -391,7 +392,6 @@ fun ArticleDetailScreen(articleId: Long, onBack: () -> Unit, onEdit: () -> Unit)
 
 
 // ADD ARTICLE SCREEN
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddArticleScreen(onBack: () -> Unit) {
@@ -407,6 +407,23 @@ fun AddArticleScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // --- NEW STATE FOR IMAGE SOURCE DIALOG AND URL INPUT ---
+    var showImageSourceDialog by remember { mutableStateOf<String?>(null) }
+    var showUrlInputDialog by remember { mutableStateOf<String?>(null) }
+    var urlInput by remember { mutableStateOf("") }
+    var imagePickerBlockId by remember { mutableStateOf<String?>(null) }
+
+    // Device image picker launcher (top-level, not inside any lambda)
+    val deviceImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        imagePickerBlockId?.let { blockId ->
+            if (uri != null) {
+                imageUris = imageUris.toMutableMap().apply { put(blockId, uri) }
+                blockInputs = blockInputs.toMutableMap().apply { remove(blockId) }
+            }
+            imagePickerBlockId = null
+        }
+    }
+
     // Fetch templates on screen load
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO) {
@@ -418,7 +435,6 @@ fun AddArticleScreen(onBack: () -> Unit) {
         }
     }
 
-    // Parse blocks from selected template
     val templateBlocks = remember(selectedTemplate) {
         selectedTemplate?.layoutJson?.let { parseBlocksFromJson(it) } ?: emptyList()
     }
@@ -453,7 +469,6 @@ fun AddArticleScreen(onBack: () -> Unit) {
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                // SCROLLABLE COLUMN ADDED HERE
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -501,8 +516,8 @@ fun AddArticleScreen(onBack: () -> Unit) {
                                         onClick = {
                                             selectedTemplate = template
                                             expanded = false
-                                            blockInputs = emptyMap() // Reset block inputs when template changes
-                                            imageUris = emptyMap()   // Reset images when template changes
+                                            blockInputs = emptyMap()
+                                            imageUris = emptyMap()
                                         }
                                     )
                                 }
@@ -526,22 +541,35 @@ fun AddArticleScreen(onBack: () -> Unit) {
                                 )
                             }
                             is TemplateBlock.ImageBlock -> {
-                                // Create launcher inside the composition for each image block
-                                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-                                    if (uri != null) {
-                                        imageUris = imageUris.toMutableMap().apply { put(block.id, uri) }
-                                    }
-                                }
                                 val uri = imageUris[block.id]
+                                val url = blockInputs[block.id]
                                 Column(modifier = Modifier.padding(bottom = 12.dp)) {
-                                    Button(onClick = { launcher.launch("image/*") }) {
-                                        Text(if (uri == null) "Pick Image" else "Change Image")
+                                    Button(
+                                        onClick = { showImageSourceDialog = block.id },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Pink80, // Change this to your desired color
+//                                            contentColor = MaterialTheme.colorScheme.onPrimary  // For the text/icon color
+                                        )
+                                    ) {
+                                        Text(
+                                            when {
+                                                uri != null || !url.isNullOrBlank() -> "Change Image"
+                                                else -> "Add Image"
+                                            }
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    if (uri != null) {
-                                        AsyncImage(
+                                    when {
+                                        uri != null -> AsyncImage(
                                             model = uri,
                                             contentDescription = "Selected Image",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(180.dp)
+                                        )
+                                        !url.isNullOrBlank() -> AsyncImage(
+                                            model = url,
+                                            contentDescription = "Image from Web",
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(180.dp)
@@ -565,14 +593,13 @@ fun AddArticleScreen(onBack: () -> Unit) {
                                 }
                                 errorMessage = null
                                 isLoading = true
-                                // --- IMAGE UPLOAD LOGIC ---
                                 val updatedInputs = blockInputs.toMutableMap()
                                 for (block in templateBlocks) {
                                     if (block is TemplateBlock.ImageBlock) {
                                         val uri = imageUris[block.id]
+                                        val url = blockInputs[block.id]
                                         if (uri != null) {
                                             try {
-                                                // Copy URI to temp file
                                                 val inputStream = context.contentResolver.openInputStream(uri)
                                                 val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
                                                 val outputStream = FileOutputStream(tempFile)
@@ -581,10 +608,8 @@ fun AddArticleScreen(onBack: () -> Unit) {
                                                 outputStream.close()
                                                 val requestFile = tempFile.asRequestBody("image/*".toMediaTypeOrNull())
                                                 val body = MultipartBody.Part.createFormData("file", tempFile.name, requestFile)
-
-                                                // Upload image to backend
                                                 val response = ApiClient.retrofitService.uploadImage(body)
-                                                val imageUrl = response.url // Assuming response is { url: "..." }
+                                                val imageUrl = response.url
                                                 updatedInputs[block.id] = imageUrl
                                                 tempFile.delete()
                                             } catch (e: Exception) {
@@ -592,10 +617,11 @@ fun AddArticleScreen(onBack: () -> Unit) {
                                                 errorMessage = "Failed to upload image: ${e.localizedMessage}"
                                                 return@launch
                                             }
+                                        } else if (!url.isNullOrBlank()) {
+                                            updatedInputs[block.id] = url
                                         }
                                     }
                                 }
-                                // --- END IMAGE UPLOAD LOGIC ---
                                 try {
                                     val contentJson = Gson().toJson(updatedInputs)
                                     val newArticle = ArticleCreateRequest(
@@ -620,7 +646,85 @@ fun AddArticleScreen(onBack: () -> Unit) {
             }
         }
     }
+
+    // --- DIALOG FOR IMAGE SOURCE SELECTION ---
+    if (showImageSourceDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = null },
+            title = { Text("Select Image Source") },
+            text = { Text("Choose an image from your device or enter a web URL.") },
+            confirmButton = {
+                Column(Modifier.padding(16.dp)) {
+                    Button(
+                        onClick = {
+                            imagePickerBlockId = showImageSourceDialog
+                            deviceImageLauncher.launch("image/*")
+                            showImageSourceDialog = null
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("From Device")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            showUrlInputDialog = showImageSourceDialog
+                            showImageSourceDialog = null
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("From Web")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { showImageSourceDialog = null },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            },
+            dismissButton = {}
+        )
+    }
+
+    // --- DIALOG FOR IMAGE URL INPUT ---
+    if (showUrlInputDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showUrlInputDialog = null },
+            title = { Text("Paste Image URL") },
+            text = {
+                OutlinedTextField(
+                    value = urlInput,
+                    onValueChange = { urlInput = it },
+                    label = { Text("Image URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        blockInputs = blockInputs.toMutableMap().apply { put(showUrlInputDialog!!, urlInput) }
+                        imageUris = imageUris.toMutableMap().apply { remove(showUrlInputDialog!!) }
+                        urlInput = ""
+                        showUrlInputDialog = null
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showUrlInputDialog = null }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
+
 
 
 
@@ -1334,6 +1438,7 @@ class MainActivity : ComponentActivity() {
                             onEdit = { navController.navigate("editArticle/$articleId") }
                         )
                     }
+                    // --- ONLY THIS LINE IS CHANGED ---
                     composable("addArticle") {
                         AddArticleScreen(onBack = { navController.popBackStack() })
                     }
